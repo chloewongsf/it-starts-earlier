@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>it starts earlier</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;1,400&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <main id="app">
+    <div class="container">
+      
+      <header>
+        <div class="title-wrapper">
+          <img src="images/Vector 1.svg" alt="" class="hand-drawn-oval" />
+          <h1>it starts earlier</h1>
+          <p class="subtitle">a realistic timeline for getting somewhere</p>
+        </div>
+        <div class="clock-wrapper">
+          <div class="clock-container">
+            <img src="images/Vector 5.svg" alt="clock face" class="clock-face" />
+            <div class="clock-hand minute-hand" id="minute-hand"></div>
+            <div class="clock-hand hour-hand" id="hour-hand"></div>
+            <div class="clock-hand second-hand" id="second-hand"></div>
+            <div class="clock-center"></div>
+            <div class="clock-time-display" id="clock-time-display"></div>
+          </div>
+        </div>
+        <div id="theme-section" class="theme-section-top">
+          <select id="theme-selector" class="theme-selector">
+            <option value="default">default</option>
+            <option value="warm-pastels">warm pastels</option>
+            <option value="cool-tones">cool tones</option>
+            <option value="earth-tones">earth tones</option>
+            <option value="sunset">sunset</option>
+          </select>
+        </div>
+        <div id="notification-settings-section" class="notification-settings-section">
+          <button id="notification-settings-toggle" class="notification-settings-toggle" aria-label="notification settings">
+            <img src="images/Group 1.svg" alt="" class="notification-icon" />
+          </button>
+          <div id="notification-settings-panel" class="notification-settings-panel" style="display: none;">
+            <h4>notification settings</h4>
+            <div class="notification-setting-item">
+              <label for="request-notification-permission">notifications</label>
+              <button id="request-notification-permission" class="notification-permission-button">
+                enable
+              </button>
+            </div>
+            <div class="notification-setting-item">
+              <label for="advance-warning">advance warning</label>
+              <select id="advance-warning">
+                <option value="3">3 minutes</option>
+                <option value="5" selected>5 minutes</option>
+                <option value="10">10 minutes</option>
+                <option value="15">15 minutes</option>
+              </select>
+            </div>
+            <div class="notification-setting-item">
+              <label>
+                <input type="checkbox" id="sound-enabled">
+                <span>sound alerts</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div class="planner-frame">
+        
+        <div class="header-controls">
+          <div class="arrival-input-wrapper">
+            <label for="arrivalTime">i need to be there by</label>
+            <input type="time" id="arrivalTime" />
+          </div>
+          <div class="arrival-input-wrapper">
+            <label for="time-format">time format</label>
+            <select id="time-format">
+              <option value="12">12-hour</option>
+              <option value="24">24-hour</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="planner-spread">
+          
+          <!-- Insert (sidebar) -->
+          <aside id="sidebar" class="planner-insert paper-texture">
+            <h2>available</h2>
+            <div id="available-realities">
+              <!-- 
+                All available realities will go here.
+                Drag into planning area.
+              -->
+            </div>
+            
+            <div id="saved-plans-section">
+              <h3>saved plans</h3>
+              <div id="saved-plans-list">
+                <!-- Saved plans will appear here -->
+              </div>
+              <button id="save-current-plan" class="save-plan-button">save current plan</button>
+            </div>
+            
+            <div id="plan-history-section">
+              <div class="plan-history-header">
+                <h3>recent plans</h3>
+                <button id="clear-plan-history" class="clear-plan-history-button" style="display: none;">clear</button>
+              </div>
+              <div id="plan-history-list">
+                <!-- Plan history will appear here -->
+              </div>
+            </div>
+          </aside>
+
+          <!-- Main page -->
+          <section id="planning-area" class="planner-page paper-texture">
+            <!-- Ring holes (desktop only) -->
+            <div class="ring-holes"></div>
+            
+            <!-- Tape at the top -->
+            <div class="tape-top"></div>
+            
+            <!-- Tape at the bottom -->
+            <div class="tape-bottom"></div>
+            
+            <!-- Corner fold - interactive resize handle -->
+            <div id="corner-fold" class="corner-fold" title="drag to resize (desktop only)"></div>
+            
+            <div class="main-content">
+              <div class="plan-header">
+                <h2>your plan</h2>
+                <button id="reset-plan" class="reset-plan-button" style="display: none;">reset</button>
+              </div>
+              <div id="planned-realities" class="drop-zone">
+                <p class="empty-state">pick realities to build your timeline</p>
+                <button id="add-reality-mobile" class="add-reality-mobile-button">+ add reality</button>
+                <!-- 
+                  Realities dragged here will appear in order.
+                  Drag to reorder within this area.
+                -->
+              </div>
+              <button id="generate-timeline" class="generate-button">let's go</button>
+              <div id="timeline">
+                <!-- 
+                  Backwards timeline will render here.
+                  Example:
+                  7:00 PM — be there
+                  6:45 PM — be finished with makeup
+                  6:25 PM — be finished showering
+                -->
+              </div>
+            </div>
+          </section>
+          
+        </div>
+      </div>
+    </div>
+
+    <div id="notification-container"></div>
+
+    <!-- Onboarding overlay -->
+    <div id="onboarding-overlay" class="onboarding-overlay" style="display: none;">
+      <div class="onboarding-content">
+        <button id="onboarding-close" class="onboarding-close" aria-label="close onboarding">×</button>
+        <div id="onboarding-slides">
+          <!-- Slides will be inserted here -->
+        </div>
+        <div class="onboarding-navigation">
+          <button id="onboarding-prev" class="onboarding-nav-button" style="display: none;">previous</button>
+          <div class="onboarding-dots"></div>
+          <button id="onboarding-next" class="onboarding-nav-button">next</button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <div class="credit-section">by chloe wong 2026</div>
+
+  <script src="script.js"></script>
+</body>
+</html>
