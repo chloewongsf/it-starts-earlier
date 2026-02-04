@@ -249,7 +249,7 @@ header {
   top: 50%;
   left: 30%;
   transform: translate(-50%, -50%) rotate(-3deg);
-  width: 260px;
+  width: 290px;
   height: auto;
   aspect-ratio: 249 / 132; /* Maintain SVG aspect ratio from viewBox */
   pointer-events: none;
