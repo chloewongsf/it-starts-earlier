@@ -3513,7 +3513,7 @@ if (document.readyState === 'loading') {
 const onboardingSlides = [
   {
     title: 'welcome',
-    content: 'this is a realistic timeline planner that works backwards from when you need to arrive. no productivity jargon—just honest planning.'
+    content: 'this is a realistic timeline planner that works backwards from when you need to arrive.'
   },
   {
     title: 'drag & drop',
