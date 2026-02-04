@@ -1040,12 +1040,20 @@ function handleTimeFormatChange(event) {
   }
 }
 
-// Parse time string (HH:MM) to Date object (today) in local time
+// Parse time string (HH:MM) to Date object (today or tomorrow) in local time
+// If the selected time is earlier than current time, assume it's for tomorrow
 function parseTime(timeString) {
   const [hours, minutes] = timeString.split(':').map(Number);
   const now = new Date();
-  const date = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes);
-  return date;
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes);
+  
+  // If the selected time is earlier than or equal to current time, assume it's for tomorrow
+  if (today <= now) {
+    const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, hours, minutes);
+    return tomorrow;
+  }
+  
+  return today;
 }
 
 // Format time for display based on selected format (12-hour or 24-hour)
