@@ -749,9 +749,12 @@ input#arrivalTime,
   transition: all 0.2s;
   box-sizing: border-box;
   font-variant-numeric: tabular-nums;
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
+  /* Safari: keep native appearance for time input to ensure it works */
+  -webkit-appearance: textfield;
+  appearance: textfield;
+  /* Ensure input is interactive */
+  pointer-events: auto;
+  cursor: url('images/Group 5.svg') 0 0, text;
 }
 
 @media (min-width: 768px) {
@@ -1841,6 +1844,25 @@ input#arrivalTime:focus,
   margin-bottom: 1.5rem;
   position: relative;
   box-shadow: var(--shadow);
+  /* Enable touch on mobile */
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Native mobile picker - positioned off-screen but functional */
+.native-mobile-picker {
+  position: fixed;
+  left: -9999px;
+  top: 50%;
+  opacity: 0;
+  pointer-events: auto;
+  width: 1px;
+  height: 1px;
+  border: none;
+  /* Use native mobile styling */
+  -webkit-appearance: menulist;
+  appearance: menulist;
+  font-size: 16px; /* Prevent zoom on iOS */
 }
 
 /* Ensure empty state is visible when drop zone is empty */

@@ -1019,8 +1019,11 @@ function handleAddCustom() {
 
 // Handle arrival time input
 function handleArrivalTimeChange(event) {
-  const timeValue = event.target.value;
-  if (timeValue) {
+  const input = event.target;
+  const timeValue = input.value;
+  
+  // Safari workaround: ensure value is properly set
+  if (timeValue && timeValue.length >= 5) {
     arrivalTime = parseTime(timeValue);
     // Don't auto-calculate, wait for button click
   } else {
@@ -2622,8 +2625,36 @@ function addRippleEffect(button) {
 
 function setupEventListeners() {
   const arrivalInput = document.getElementById('arrivalTime');
-  arrivalInput.addEventListener('change', handleArrivalTimeChange);
-  arrivalInput.addEventListener('input', handleArrivalTimeChange);
+  if (arrivalInput) {
+    // Safari-specific: ensure the input is properly initialized
+    // Use step="60" for minutes (default) - Safari works better with this
+    arrivalInput.setAttribute('step', '60');
+    
+    // Ensure input is editable
+    arrivalInput.removeAttribute('readonly');
+    arrivalInput.removeAttribute('disabled');
+    
+    // Remove any existing listeners to avoid duplicates
+    const newHandler = handleArrivalTimeChange;
+    arrivalInput.removeEventListener('change', newHandler);
+    arrivalInput.removeEventListener('input', newHandler);
+    arrivalInput.removeEventListener('blur', newHandler);
+    
+    // Add multiple event listeners for better Safari compatibility
+    arrivalInput.addEventListener('change', newHandler);
+    arrivalInput.addEventListener('input', newHandler);
+    arrivalInput.addEventListener('blur', newHandler);
+    
+    // Safari workaround: ensure input is editable on focus
+    arrivalInput.addEventListener('focus', function() {
+      this.removeAttribute('readonly');
+      this.removeAttribute('disabled');
+      // Force Safari to allow editing
+      if (this.value) {
+        this.select();
+      }
+    });
+  }
   
   const timeFormatSelect = document.getElementById('time-format');
   if (timeFormatSelect) {
@@ -3403,18 +3434,199 @@ function swapRealities(id1, id2) {
 
 function setupMobileRealitySelector() {
   const mobileButton = document.getElementById('add-reality-mobile');
-  if (!mobileButton) return;
+  const dropZone = document.getElementById('planned-realities');
   
-  mobileButton.addEventListener('click', (e) => {
-    e.stopPropagation();
-    createMobileRealitySelector();
-  });
+  // Detect if we're on a touch device
+  const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+  const isMobile = window.innerWidth <= 1023;
+  
+  // Setup native mobile picker for touch devices
+  if (dropZone && (isTouchDevice || isMobile)) {
+    // Touch handler for drop zone
+    dropZone.addEventListener('touchend', (e) => {
+      // Only trigger on empty state or when touching the drop zone directly
+      const isEmpty = dropZone.querySelectorAll('.planned-reality-item').length === 0;
+      const isTouchingEmptyState = e.target.classList.contains('empty-state') || 
+                                    e.target === dropZone ||
+                                    (isEmpty && e.target.closest('.drop-zone'));
+      
+      if (isTouchingEmptyState && !e.target.closest('button')) {
+        e.preventDefault();
+        e.stopPropagation();
+        showNativeMobilePicker();
+      }
+    }, { passive: false });
+    
+    // Click handler for compatibility
+    dropZone.addEventListener('click', (e) => {
+      const isEmpty = dropZone.querySelectorAll('.planned-reality-item').length === 0;
+      const isClickingEmptyState = e.target.classList.contains('empty-state') || 
+                                    e.target === dropZone ||
+                                    (isEmpty && e.target.closest('.drop-zone'));
+      
+      if (isClickingEmptyState && !e.target.closest('button') && (isTouchDevice || isMobile)) {
+        e.preventDefault();
+        e.stopPropagation();
+        showNativeMobilePicker();
+      }
+    });
+  }
+  
+  if (mobileButton) {
+    mobileButton.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (isTouchDevice || isMobile) {
+        showNativeMobilePicker();
+      } else {
+        createMobileRealitySelector();
+      }
+    });
+  }
   
   // Close selector when clicking outside
   document.addEventListener('click', (e) => {
     const selector = document.getElementById('mobile-reality-selector');
     if (selector && selector.style.display === 'block' && !selector.contains(e.target) && e.target !== mobileButton) {
       selector.style.display = 'none';
+    }
+  });
+}
+
+// Show native mobile picker (iOS/Android native interface)
+function showNativeMobilePicker() {
+  // Remove existing picker if any
+  let existingPicker = document.getElementById('native-mobile-picker');
+  if (existingPicker) {
+    existingPicker.remove();
+  }
+  
+  // Create native select element
+  const picker = document.createElement('select');
+  picker.id = 'native-mobile-picker';
+  picker.className = 'native-mobile-picker';
+  
+  // Add empty option first
+  const emptyOption = document.createElement('option');
+  emptyOption.value = '';
+  emptyOption.textContent = 'select a reality...';
+  emptyOption.disabled = true;
+  emptyOption.selected = true;
+  picker.appendChild(emptyOption);
+  
+  // Group realities by category for better organization
+  const categories = {
+    'getting-ready': [],
+    'meals': [],
+    'transit': [],
+    'rot': [],
+    'packing': [],
+    'custom': []
+  };
+  
+  realities.forEach(reality => {
+    const category = reality.category || 'custom';
+    if (categories[category]) {
+      categories[category].push(reality);
+    }
+  });
+  
+  const categoryOrder = ['getting-ready', 'meals', 'transit', 'rot', 'packing', 'custom'];
+  const categoryLabels = {
+    'rot': 'rot',
+    'meals': 'meals',
+    'getting-ready': 'getting ready',
+    'packing': 'packing',
+    'transit': 'transit / travel',
+    'custom': 'custom'
+  };
+  
+  categoryOrder.forEach(categoryKey => {
+    const categoryRealities = categories[categoryKey];
+    if (categoryRealities.length > 0) {
+      // Add optgroup for category
+      const optgroup = document.createElement('optgroup');
+      optgroup.label = categoryLabels[categoryKey];
+      
+      categoryRealities.forEach(reality => {
+        // Only show if not already in plan
+        if (!plannedRealities.includes(reality.id)) {
+          const option = document.createElement('option');
+          option.value = reality.id;
+          option.textContent = reality.label;
+          optgroup.appendChild(option);
+        }
+      });
+      
+      if (optgroup.children.length > 0) {
+        picker.appendChild(optgroup);
+      }
+    }
+  });
+  
+  // Handle selection
+  picker.addEventListener('change', (e) => {
+    const selectedId = e.target.value;
+    if (selectedId && !plannedRealities.includes(selectedId)) {
+      plannedRealities.push(selectedId);
+      renderPlannedRealities();
+      setupDragAndDrop();
+      
+      // Reset picker and show again for next selection
+      picker.value = '';
+      // Trigger native picker again after a short delay
+      setTimeout(() => {
+        picker.focus();
+        picker.click();
+      }, 300);
+    }
+  });
+  
+  // Append to body (positioned off-screen but accessible)
+  picker.style.position = 'fixed';
+  picker.style.left = '-9999px';
+  picker.style.top = '50%';
+  picker.style.opacity = '0';
+  picker.style.pointerEvents = 'auto';
+  picker.style.zIndex = '9999';
+  document.body.appendChild(picker);
+  
+  // Trigger native picker (iOS/Android will show native interface)
+  // On mobile devices, programmatically focusing/clicking a select opens the native picker
+  requestAnimationFrame(() => {
+    picker.focus();
+    
+    // For iOS Safari, we need to trigger both focus and a touch event
+    if (/iPhone|iPad|iPod/.test(navigator.userAgent)) {
+      const touchEvent = new TouchEvent('touchstart', { bubbles: true, cancelable: true });
+      picker.dispatchEvent(touchEvent);
+    }
+    
+    // Trigger click to open native picker
+    picker.click();
+    
+    // Also try programmatic focus again after a delay (for Android)
+    setTimeout(() => {
+      picker.focus();
+    }, 100);
+  });
+  
+  // Clean up when picker loses focus or selection is made
+  let cleanupTimeout;
+  const cleanup = () => {
+    clearTimeout(cleanupTimeout);
+    cleanupTimeout = setTimeout(() => {
+      if (picker.parentNode) {
+        picker.remove();
+      }
+    }, 500);
+  };
+  
+  picker.addEventListener('blur', cleanup);
+  picker.addEventListener('change', (e) => {
+    const selectedId = e.target.value;
+    if (selectedId) {
+      // Selection was made, cleanup after a delay
+      cleanup();
     }
   });
 }
