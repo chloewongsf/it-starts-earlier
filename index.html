@@ -75,7 +75,16 @@
         <div class="header-controls">
           <div class="arrival-input-wrapper">
             <label for="arrivalTime">i need to be there by</label>
-            <input type="time" id="arrivalTime" step="60" />
+            <div id="time-input-container">
+              <input type="time" id="arrivalTime" step="60" />
+              <!-- Safari fallback inputs (hidden by default) -->
+              <div id="safari-time-inputs" style="display: none;">
+                <select id="safari-hours" aria-label="hours"></select>
+                <span class="time-separator">:</span>
+                <select id="safari-minutes" aria-label="minutes"></select>
+                <select id="safari-ampm" aria-label="AM/PM"></select>
+              </div>
+            </div>
           </div>
           <div class="arrival-input-wrapper">
             <label for="time-format">time format</label>

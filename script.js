@@ -2623,28 +2623,118 @@ function addRippleEffect(button) {
   });
 }
 
-function setupEventListeners() {
+// Detect Safari browser
+function isSafari() {
+  return /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+}
+
+// Setup Safari-specific time inputs
+function setupSafariTimeInputs() {
+  if (!isSafari()) return;
+
   const arrivalInput = document.getElementById('arrivalTime');
-  if (arrivalInput) {
+  const safariInputs = document.getElementById('safari-time-inputs');
+  const hoursSelect = document.getElementById('safari-hours');
+  const minutesSelect = document.getElementById('safari-minutes');
+  const ampmSelect = document.getElementById('safari-ampm');
+
+  if (!safariInputs || !hoursSelect || !minutesSelect || !ampmSelect) return;
+
+  // Hide native time input and show Safari fallback
+  arrivalInput.style.display = 'none';
+  safariInputs.style.display = 'flex';
+  safariInputs.style.gap = '5px';
+  safariInputs.style.alignItems = 'center';
+
+  // Populate hours (1-12)
+  for (let i = 1; i <= 12; i++) {
+    const option = document.createElement('option');
+    option.value = i;
+    option.textContent = i.toString().padStart(2, '0');
+    hoursSelect.appendChild(option);
+  }
+
+  // Populate minutes (00, 15, 30, 45)
+  [0, 15, 30, 45].forEach(min => {
+    const option = document.createElement('option');
+    option.value = min;
+    option.textContent = min.toString().padStart(2, '0');
+    minutesSelect.appendChild(option);
+  });
+
+  // Populate AM/PM
+  ['AM', 'PM'].forEach(period => {
+    const option = document.createElement('option');
+    option.value = period;
+    option.textContent = period;
+    ampmSelect.appendChild(option);
+  });
+
+  // Set default to current time + 1 hour
+  const now = new Date();
+  const defaultHour = now.getHours() + 1;
+  const hour12 = defaultHour > 12 ? defaultHour - 12 : (defaultHour === 0 ? 12 : defaultHour);
+  const period = defaultHour >= 12 ? 'PM' : 'AM';
+
+  hoursSelect.value = hour12;
+  minutesSelect.value = 0;
+  ampmSelect.value = period;
+
+  // Handler to update arrivalTime when selects change
+  const updateArrivalTime = () => {
+    const hour = parseInt(hoursSelect.value);
+    const minute = parseInt(minutesSelect.value);
+    const period = ampmSelect.value;
+
+    // Convert to 24-hour format
+    let hour24 = hour;
+    if (period === 'PM' && hour !== 12) {
+      hour24 = hour + 12;
+    } else if (period === 'AM' && hour === 12) {
+      hour24 = 0;
+    }
+
+    // Create time string in HH:MM format
+    const timeString = `${hour24.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+
+    // Update hidden input and arrivalTime variable
+    arrivalInput.value = timeString;
+    arrivalTime = parseTime(timeString);
+  };
+
+  hoursSelect.addEventListener('change', updateArrivalTime);
+  minutesSelect.addEventListener('change', updateArrivalTime);
+  ampmSelect.addEventListener('change', updateArrivalTime);
+
+  // Initialize arrivalTime
+  updateArrivalTime();
+}
+
+function setupEventListeners() {
+  // Setup Safari time inputs if needed
+  setupSafariTimeInputs();
+
+  const arrivalInput = document.getElementById('arrivalTime');
+  if (arrivalInput && !isSafari()) {
     // Safari-specific: ensure the input is properly initialized
     // Use step="60" for minutes (default) - Safari works better with this
     arrivalInput.setAttribute('step', '60');
-    
+
     // Ensure input is editable
     arrivalInput.removeAttribute('readonly');
     arrivalInput.removeAttribute('disabled');
-    
+
     // Remove any existing listeners to avoid duplicates
     const newHandler = handleArrivalTimeChange;
     arrivalInput.removeEventListener('change', newHandler);
     arrivalInput.removeEventListener('input', newHandler);
     arrivalInput.removeEventListener('blur', newHandler);
-    
+
     // Add multiple event listeners for better Safari compatibility
     arrivalInput.addEventListener('change', newHandler);
     arrivalInput.addEventListener('input', newHandler);
     arrivalInput.addEventListener('blur', newHandler);
-    
+
     // Safari workaround: ensure input is editable on focus
     arrivalInput.addEventListener('focus', function() {
       this.removeAttribute('readonly');
@@ -3435,45 +3525,96 @@ function swapRealities(id1, id2) {
 function setupMobileRealitySelector() {
   const mobileButton = document.getElementById('add-reality-mobile');
   const dropZone = document.getElementById('planned-realities');
-  
+
   // Detect if we're on a touch device
   const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
   const isMobile = window.innerWidth <= 1023;
-  
+
   // Setup native mobile picker for touch devices
   if (dropZone && (isTouchDevice || isMobile)) {
-    // Touch handler for drop zone
-    dropZone.addEventListener('touchend', (e) => {
-      // Only trigger on empty state or when touching the drop zone directly
-      const isEmpty = dropZone.querySelectorAll('.planned-reality-item').length === 0;
-      const isTouchingEmptyState = e.target.classList.contains('empty-state') || 
-                                    e.target === dropZone ||
-                                    (isEmpty && e.target.closest('.drop-zone'));
-      
-      if (isTouchingEmptyState && !e.target.closest('button')) {
+    // Remove any existing event listeners to avoid duplicates
+    const newDropZone = dropZone.cloneNode(true);
+    dropZone.parentNode.replaceChild(newDropZone, dropZone);
+    const freshDropZone = document.getElementById('planned-realities');
+
+    // Improved touch handler for drop zone
+    let touchStartTime = 0;
+    let touchStartTarget = null;
+
+    freshDropZone.addEventListener('touchstart', (e) => {
+      touchStartTime = Date.now();
+      touchStartTarget = e.target;
+    }, { passive: true });
+
+    freshDropZone.addEventListener('touchend', (e) => {
+      const touchDuration = Date.now() - touchStartTime;
+
+      // Only trigger for quick taps (not long presses or swipes)
+      if (touchDuration > 500) return;
+
+      // Check if tap is on the drop zone area (not on individual reality items' interactive parts)
+      const isPlannedItem = e.target.closest('.planned-reality-item');
+      const isDurationInput = e.target.closest('.duration-input');
+      const isDeleteButton = e.target.closest('.planned-reality-delete');
+
+      // If tapping empty state, drop zone background, or add button
+      const isEmpty = freshDropZone.querySelectorAll('.planned-reality-item').length === 0;
+      const isEmptyStateTap = e.target.classList.contains('empty-state') ||
+                              (isEmpty && e.target === freshDropZone);
+      const isAddButtonTap = e.target.classList.contains('add-reality-mobile-button') ||
+                             e.target.closest('.add-reality-mobile-button');
+
+      if ((isEmptyStateTap || isAddButtonTap) && !isDurationInput && !isDeleteButton) {
         e.preventDefault();
         e.stopPropagation();
         showNativeMobilePicker();
       }
     }, { passive: false });
-    
-    // Click handler for compatibility
-    dropZone.addEventListener('click', (e) => {
-      const isEmpty = dropZone.querySelectorAll('.planned-reality-item').length === 0;
-      const isClickingEmptyState = e.target.classList.contains('empty-state') || 
-                                    e.target === dropZone ||
-                                    (isEmpty && e.target.closest('.drop-zone'));
-      
-      if (isClickingEmptyState && !e.target.closest('button') && (isTouchDevice || isMobile)) {
+
+    // Click handler for better compatibility (some devices may fire click instead of touch)
+    freshDropZone.addEventListener('click', (e) => {
+      const isPlannedItem = e.target.closest('.planned-reality-item');
+      const isDurationInput = e.target.closest('.duration-input');
+      const isDeleteButton = e.target.closest('.planned-reality-delete');
+
+      const isEmpty = freshDropZone.querySelectorAll('.planned-reality-item').length === 0;
+      const isEmptyStateClick = e.target.classList.contains('empty-state') ||
+                                (isEmpty && e.target === freshDropZone);
+      const isAddButtonClick = e.target.classList.contains('add-reality-mobile-button') ||
+                               e.target.closest('.add-reality-mobile-button');
+
+      if ((isEmptyStateClick || isAddButtonClick) && !isDurationInput && !isDeleteButton && (isTouchDevice || isMobile)) {
         e.preventDefault();
         e.stopPropagation();
         showNativeMobilePicker();
       }
     });
   }
-  
+
   if (mobileButton) {
-    mobileButton.addEventListener('click', (e) => {
+    // Ensure button is visible on touch devices
+    if (isTouchDevice || isMobile) {
+      mobileButton.style.display = 'block';
+    }
+
+    // Remove existing listeners
+    const newButton = mobileButton.cloneNode(true);
+    mobileButton.parentNode.replaceChild(newButton, mobileButton);
+    const freshButton = document.getElementById('add-reality-mobile');
+
+    // Add touch event for better mobile responsiveness
+    freshButton.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (isTouchDevice || isMobile) {
+        showNativeMobilePicker();
+      } else {
+        createMobileRealitySelector();
+      }
+    }, { passive: false });
+
+    freshButton.addEventListener('click', (e) => {
+      e.preventDefault();
       e.stopPropagation();
       if (isTouchDevice || isMobile) {
         showNativeMobilePicker();
@@ -3581,29 +3722,51 @@ function showNativeMobilePicker() {
     }
   });
   
-  // Append to body (positioned off-screen but accessible)
-  picker.style.position = 'fixed';
-  picker.style.left = '-9999px';
-  picker.style.top = '50%';
-  picker.style.opacity = '0';
-  picker.style.pointerEvents = 'auto';
-  picker.style.zIndex = '9999';
+  // Append to body - on iOS Safari, we need the element to be visible for the picker to work
+  // Position it over the screen center with a semi-transparent overlay
+  const isIOSSafari = /iPhone|iPad|iPod/.test(navigator.userAgent) && /Safari/.test(navigator.userAgent);
+
+  if (isIOSSafari) {
+    // For iOS Safari, make it visible in the center
+    picker.style.position = 'fixed';
+    picker.style.left = '50%';
+    picker.style.top = '50%';
+    picker.style.transform = 'translate(-50%, -50%)';
+    picker.style.width = '90%';
+    picker.style.maxWidth = '400px';
+    picker.style.fontSize = '16px'; // Prevent zoom on iOS
+    picker.style.padding = '12px';
+    picker.style.border = '2px solid hsl(var(--accent-warm))';
+    picker.style.borderRadius = '8px';
+    picker.style.backgroundColor = 'white';
+    picker.style.zIndex = '10000';
+    picker.style.boxShadow = '0 4px 24px rgba(0, 0, 0, 0.2)';
+  } else {
+    // For other devices, keep it off-screen but accessible
+    picker.style.position = 'fixed';
+    picker.style.left = '-9999px';
+    picker.style.top = '50%';
+    picker.style.opacity = '0';
+    picker.style.pointerEvents = 'auto';
+    picker.style.zIndex = '9999';
+  }
+
   document.body.appendChild(picker);
-  
+
   // Trigger native picker (iOS/Android will show native interface)
   // On mobile devices, programmatically focusing/clicking a select opens the native picker
   requestAnimationFrame(() => {
     picker.focus();
-    
+
     // For iOS Safari, we need to trigger both focus and a touch event
-    if (/iPhone|iPad|iPod/.test(navigator.userAgent)) {
+    if (isIOSSafari) {
       const touchEvent = new TouchEvent('touchstart', { bubbles: true, cancelable: true });
       picker.dispatchEvent(touchEvent);
     }
-    
+
     // Trigger click to open native picker
     picker.click();
-    
+
     // Also try programmatic focus again after a delay (for Android)
     setTimeout(() => {
       picker.focus();
